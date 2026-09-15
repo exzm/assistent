@@ -1,0 +1,30 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-helper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-helper}
+      POSTGRES_DB: ${POSTGRES_DB:-helper_bot}
+    volumes:
+      - ./data/pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-helper} -d ${POSTGRES_DB:-helper_bot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-helper}:${POSTGRES_PASSWORD:-helper}@db:5432/${POSTGRES_DB:-helper_bot}
+      FILES_DIR: /data/files
+    volumes:
+      - ./data/files:/data/files
+    depends_on:
+      db:
+        condition: service_healthy

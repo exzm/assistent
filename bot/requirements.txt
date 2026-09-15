@@ -1,0 +1,11 @@
+aiogram==3.22.0
+openai==1.109.1
+sqlalchemy[asyncio]==2.0.43
+asyncpg==0.30.0
+pgvector==0.4.1
+pydantic-settings==2.10.1
+pypdf==6.0.0
+pdf2image==1.17.0
+Pillow==11.3.0
+python-dotenv==1.1.1
+httpx==0.28.1
