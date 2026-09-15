@@ -102,6 +102,8 @@ async def test_incoming_handlers():
     await incoming.on_text(message)
     message = mock_message(text="   ")
     await incoming.on_text(message)
+    message = mock_message(text="short note")
+    await incoming.on_text(message)
     message = mock_message(text="x" * 600)
     await incoming.on_text(message)
     assert message.answer.await_count == 1
@@ -151,15 +153,16 @@ async def test_callbacks():
     assert callbacks.parse_action_data("act:save:id1") == ("save", "id1")
 
     callback = MagicMock()
-    callback.data = "act:save:missing"
     callback.answer = AsyncMock()
-    callback.message = MagicMock()
-    callback.message.edit_reply_markup = AsyncMock()
-    callback.message.edit_text = AsyncMock()
     callback.from_user = SimpleNamespace(id=42)
     callback.bot = MagicMock()
     callback.bot.send_message = AsyncMock()
-
+    callback.data = "act:save:missing"
+    callback.message = None
+    await callbacks.on_action(callback, MagicMock())
+    callback.message = MagicMock()
+    callback.message.edit_reply_markup = AsyncMock()
+    callback.message.edit_text = AsyncMock()
     await callbacks.on_action(callback, MagicMock())
 
     payload = PendingPayload(source_type="text", text="q", query_text="q")

@@ -9,7 +9,6 @@ from app.services.extract import (
     resolve_document_raw_text,
 )
 from app.services.rag import compose_answer, normalize_intent
-from pathlib import Path
 
 
 def test_normalize_extracted_fields():

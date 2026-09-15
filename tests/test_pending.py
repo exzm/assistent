@@ -1,9 +1,15 @@
-import time
 
 import pytest
 
 from app.domain.payload import PendingPayload
-from app.services.pending import PendingStore, get_pending, get_pending_store, pop_pending, put_pending, reset_pending_store
+from app.services.pending import (
+    PendingStore,
+    get_pending,
+    get_pending_store,
+    pop_pending,
+    put_pending,
+    reset_pending_store,
+)
 
 
 def test_pending_store_ttl_and_ops():

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services import embed, extract, stt, storage, vision
+from app.services import embed, extract, storage, stt, vision
 from app.services.download import download_telegram_file
 from helpers import make_chat_response, make_embed_response
 

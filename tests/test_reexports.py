@@ -1,6 +1,5 @@
-from app import exceptions
+from app import db_middleware, exceptions
 from app.services import textutil
-from app import db_middleware
 
 
 def test_reexports():

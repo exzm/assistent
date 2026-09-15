@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.db.session import SessionLocal
+
+if TYPE_CHECKING:
+    from aiogram import Dispatcher
 
 
 class WhitelistMiddleware(BaseMiddleware):
@@ -32,6 +35,11 @@ class WhitelistMiddleware(BaseMiddleware):
         allowed_id = self._resolve_allowed_id()
         user_id = extract_user_id(event)
 
+        # TELEGRAM_USER_ID=0 enables one-time bootstrap: show caller id and block.
+        if allowed_id == 0:
+            await reveal_user_id(event)
+            return None
+
         if user_id is None or user_id != allowed_id:
             await reject_unauthorized(event)
             return None
@@ -51,6 +59,23 @@ async def reject_unauthorized(event: TelegramObject) -> None:
         await event.answer("Access denied.")
     elif isinstance(event, CallbackQuery):
         await event.answer("Access denied.", show_alert=True)
+
+
+async def reveal_user_id(event: TelegramObject) -> None:
+    logger = logging.getLogger(__name__)
+    user_id = extract_user_id(event)
+    if user_id is not None:
+        logger.info("Bootstrap detected telegram user_id=%s", user_id)
+    text = (
+        f"Bootstrap mode.\nYour Telegram user id: {user_id}\n"
+        "Set TELEGRAM_USER_ID in .env and restart the bot."
+        if user_id is not None
+        else "Bootstrap mode. Could not detect user id."
+    )
+    if isinstance(event, Message):
+        await event.answer(text)
+    elif isinstance(event, CallbackQuery):
+        await event.answer(text, show_alert=True)
 
 
 class DbSessionMiddleware(BaseMiddleware):
@@ -100,7 +125,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     )
 
 
-def create_dispatcher(settings: Settings | None = None) -> "Dispatcher":
+def create_dispatcher(settings: Settings | None = None) -> Dispatcher:
     from aiogram import Dispatcher
 
     from app.handlers import callbacks, commands, incoming

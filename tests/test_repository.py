@@ -4,7 +4,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.db.repository import build_similarity_query, create_item, get_item, list_recent, search_similar
+from app.db.repository import (
+    build_similarity_query,
+    create_item,
+    get_item,
+    list_recent,
+    search_similar,
+)
 
 
 def test_build_similarity_query_filters():
@@ -29,6 +35,7 @@ async def test_repository_crud_and_search():
     session.execute = AsyncMock()
 
     item = await create_item(session, title="t", source_type="text")
+    assert item is not None
     assert session.add.called
     assert await get_item(session, 1) == "item"
 

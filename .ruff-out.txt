@@ -1,0 +1,459 @@
+E501 Line too long (103 > 100)
+  --> bot/app/handlers/callbacks.py:34:101
+   |
+34 | async def handle_save(callback: CallbackQuery, session: AsyncSession, payload: PendingPayload) -> None:
+   |                                                                                                     ^^^
+35 |     await edit_or_send(callback, "Saving…")
+36 |     try:
+   |
+
+E501 Line too long (102 > 100)
+  --> bot/app/handlers/callbacks.py:43:101
+   |
+43 | async def handle_ask(callback: CallbackQuery, session: AsyncSession, payload: PendingPayload) -> None:
+   |                                                                                                     ^^
+44 |     await edit_or_send(callback, "Preparing question…")
+45 |     try:
+   |
+
+E501 Line too long (103 > 100)
+  --> bot/app/keyboards.py:11:101
+   |
+ 9 |             [
+10 |                 InlineKeyboardButton(text="Save", callback_data=f"act:save:{pending_id}"),
+11 |                 InlineKeyboardButton(text="This is a question", callback_data=f"act:ask:{pending_id}"),
+   |                                                                                                     ^^^
+12 |             ],
+13 |             [InlineKeyboardButton(text="Cancel", callback_data=f"act:cancel:{pending_id}")],
+   |
+
+F821 Undefined name `Dispatcher`
+   --> bot/app/middleware.py:103:60
+    |
+103 | def create_dispatcher(settings: Settings | None = None) -> Dispatcher:
+    |                                                            ^^^^^^^^^^
+104 |     from aiogram import Dispatcher
+    |
+
+E501 Line too long (102 > 100)
+   --> bot/app/services/extract.py:109:101
+    |
+107 |     if path.suffix.lower() == ".pdf":
+108 |         body = pdf_text if len(pdf_text) >= 40 else (vision_text or pdf_text)
+109 |         return join_nonempty(caption, body) or build_fallback_raw_text("document", caption, path.name)
+    |                                                                                                     ^^
+110 |     if mime_type and mime_type.startswith("image/"):
+111 |         return join_nonempty(caption, vision_text) or build_fallback_raw_text("document", caption, path.name)
+    |
+
+E501 Line too long (109 > 100)
+   --> bot/app/services/extract.py:111:101
+    |
+109 |         return join_nonempty(caption, body) or build_fallback_raw_text("document", caption, path.name)
+110 |     if mime_type and mime_type.startswith("image/"):
+111 |         return join_nonempty(caption, vision_text) or build_fallback_raw_text("document", caption, path.name)
+    |                                                                                                     ^^^^^^^^^
+112 |     return join_nonempty(caption, f"File: {path.name}", existing_text) or build_fallback_raw_text(
+113 |         "document", caption, path.name
+    |
+
+E501 Line too long (102 > 100)
+  --> bot/app/services/query_text.py:15:101
+   |
+14 | def is_image_payload(payload: PendingPayload) -> bool:
+15 |     return payload.source_type in {"photo", "image"} or (payload.mime_type or "").startswith("image/")
+   |                                                                                                     ^^
+   |
+
+E501 Line too long (110 > 100)
+  --> bot/app/utils/parsing.py:12:101
+   |
+12 | def parse_date(value: Any, *, formats: tuple[str, ...] = ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")) -> date | None:
+   |                                                                                                     ^^^^^^^^^^
+13 |     """Parse a date from common string formats."""
+14 |     if not value or not isinstance(value, str):
+   |
+
+E501 Line too long (102 > 100)
+  --> tests/test_coverage_gaps.py:85:101
+   |
+83 |     from helpers import mock_message
+84 |
+85 |     message = mock_message(audio=SimpleNamespace(file_id="a", mime_type="audio/mpeg", file_name=None))
+   |                                                                                                     ^^
+86 |     with patch("app.handlers.incoming.download_telegram_file", AsyncMock(return_value=b"1")):
+87 |         await on_audio(message)
+   |
+
+E501 Line too long (103 > 100)
+  --> tests/test_coverage_gaps.py:94:101
+   |
+93 |     message = mock_message(
+94 |         document=SimpleNamespace(file_id="d", file_name="x.bin", mime_type="application/octet-stream"),
+   |                                                                                                     ^^^
+95 |         caption=None,
+96 |     )
+   |
+
+E501 Line too long (124 > 100)
+  --> tests/test_handlers.py:56:101
+   |
+54 |     )
+55 |     assert forward_from_message(msg) == "Anon"
+56 |     msg = mock_message(forward_origin=SimpleNamespace(sender_user=None, chat=None, sender_chat=None, sender_user_name=None))
+   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+57 |     assert forward_from_message(msg) is None
+58 |     assert is_forward_message(mock_message(forward_date=1))
+   |
+
+E501 Line too long (101 > 100)
+   --> tests/test_handlers.py:145:101
+    |
+143 |     with patch("app.handlers.commands.answer_question", AsyncMock(return_value=("ans", []))):
+144 |         await commands.cmd_ask(message, command, session)
+145 |     with patch("app.handlers.commands.answer_question", AsyncMock(side_effect=RuntimeError("boom"))):
+    |                                                                                                     ^
+146 |         await commands.cmd_ask(message, command, session)
+    |
+
+E501 Line too long (102 > 100)
+   --> tests/test_handlers.py:180:101
+    |
+178 |             await callbacks.on_action(callback, MagicMock())
+179 |
+180 |         with patch("app.handlers.callbacks.ingest_payload", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^
+181 |             callback.data = "act:save:id"
+182 |             with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/test_handlers.py:185:9
+    |
+183 |                   await callbacks.on_action(callback, MagicMock())
+184 |
+185 | /         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+186 | |             with patch("app.handlers.callbacks.answer_question", AsyncMock(return_value=("a", []))):
+    | |____________________________________________________________________________________________________^
+187 |                   callback.data = "act:ask:id"
+188 |                   with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+help: Combine `with` statements
+
+E501 Line too long (110 > 100)
+   --> tests/test_handlers.py:196:101
+    |
+194 |                 await callbacks.on_action(callback, MagicMock())
+195 |
+196 |         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^^^^^^^^^
+197 |             callback.data = "act:ask:id"
+198 |             with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/test_handlers.py:201:9
+    |
+199 |                   await callbacks.on_action(callback, MagicMock())
+200 |
+201 | /         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+202 | |             with patch("app.handlers.callbacks.answer_question", AsyncMock(side_effect=RuntimeError("x"))):
+    | |___________________________________________________________________________________________________________^
+203 |                   callback.data = "act:ask:id"
+204 |                   with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+help: Combine `with` statements
+
+E501 Line too long (107 > 100)
+   --> tests/test_handlers.py:202:101
+    |
+201 |         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+202 |             with patch("app.handlers.callbacks.answer_question", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^^^^^^
+203 |                 callback.data = "act:ask:id"
+204 |                 with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+E501 Line too long (101 > 100)
+  --> tests/test_ingest_rag.py:47:101
+   |
+45 | @pytest.mark.asyncio
+46 | async def test_resolve_raw_text_branches(tmp_path):
+47 |     assert await ingest.resolve_raw_text(PendingPayload(source_type="text", text="hi"), None) == "hi"
+   |                                                                                                     ^
+48 |     assert "without text" in await ingest.resolve_raw_text(PendingPayload(source_type="text"), None)
+   |
+
+E501 Line too long (105 > 100)
+   --> tests/test_ingest_rag.py:177:101
+    |
+176 |     with patch("app.db.repository.search_similar", AsyncMock(side_effect=[[], [item]])):
+177 |         answer, items = await rag.answer_question(session, "when oil?", client=client, settings=settings)
+    |                                                                                                     ^^^^^
+178 |         assert "Cards:" in answer
+179 |         assert items == [item]
+    |
+
+E501 Line too long (105 > 100)
+   --> tests/test_ingest_rag.py:182:101
+    |
+181 |     with patch("app.db.repository.search_similar", AsyncMock(return_value=[item])):
+182 |         answer, items = await rag.answer_question(session, "oil again", client=client, settings=settings)
+    |                                                                                                     ^^^^^
+183 |         assert items == [item]
+    |
+
+E501 Line too long (103 > 100)
+   --> tests/test_ingest_rag.py:186:101
+    |
+185 |     with patch("app.db.repository.search_similar", AsyncMock(return_value=[])):
+186 |         answer, items = await rag.answer_question(session, "missing", client=client, settings=settings)
+    |                                                                                                     ^^^
+187 |         assert items == []
+188 |         assert "No matching" in answer
+    |
+
+F841 Local variable `item` is assigned to but never used
+  --> tests/test_repository.py:37:5
+   |
+35 |     session.execute = AsyncMock()
+36 |
+37 |     item = await create_item(session, title="t", source_type="text")
+   |     ^^^^
+38 |     assert session.add.called
+39 |     assert await get_item(session, 1) == "item"
+   |
+help: Remove assignment to unused variable `item`
+
+Found 40 errors (18 fixed, 22 remaining).
+No fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+E501 Line too long (103 > 100)
+  --> bot/app/handlers/callbacks.py:34:101
+   |
+34 | async def handle_save(callback: CallbackQuery, session: AsyncSession, payload: PendingPayload) -> None:
+   |                                                                                                     ^^^
+35 |     await edit_or_send(callback, "Saving…")
+36 |     try:
+   |
+
+E501 Line too long (102 > 100)
+  --> bot/app/handlers/callbacks.py:43:101
+   |
+43 | async def handle_ask(callback: CallbackQuery, session: AsyncSession, payload: PendingPayload) -> None:
+   |                                                                                                     ^^
+44 |     await edit_or_send(callback, "Preparing question…")
+45 |     try:
+   |
+
+E501 Line too long (103 > 100)
+  --> bot/app/keyboards.py:11:101
+   |
+ 9 |             [
+10 |                 InlineKeyboardButton(text="Save", callback_data=f"act:save:{pending_id}"),
+11 |                 InlineKeyboardButton(text="This is a question", callback_data=f"act:ask:{pending_id}"),
+   |                                                                                                     ^^^
+12 |             ],
+13 |             [InlineKeyboardButton(text="Cancel", callback_data=f"act:cancel:{pending_id}")],
+   |
+
+F821 Undefined name `Dispatcher`
+   --> bot/app/middleware.py:103:60
+    |
+103 | def create_dispatcher(settings: Settings | None = None) -> Dispatcher:
+    |                                                            ^^^^^^^^^^
+104 |     from aiogram import Dispatcher
+    |
+
+E501 Line too long (102 > 100)
+   --> bot/app/services/extract.py:109:101
+    |
+107 |     if path.suffix.lower() == ".pdf":
+108 |         body = pdf_text if len(pdf_text) >= 40 else (vision_text or pdf_text)
+109 |         return join_nonempty(caption, body) or build_fallback_raw_text("document", caption, path.name)
+    |                                                                                                     ^^
+110 |     if mime_type and mime_type.startswith("image/"):
+111 |         return join_nonempty(caption, vision_text) or build_fallback_raw_text("document", caption, path.name)
+    |
+
+E501 Line too long (109 > 100)
+   --> bot/app/services/extract.py:111:101
+    |
+109 |         return join_nonempty(caption, body) or build_fallback_raw_text("document", caption, path.name)
+110 |     if mime_type and mime_type.startswith("image/"):
+111 |         return join_nonempty(caption, vision_text) or build_fallback_raw_text("document", caption, path.name)
+    |                                                                                                     ^^^^^^^^^
+112 |     return join_nonempty(caption, f"File: {path.name}", existing_text) or build_fallback_raw_text(
+113 |         "document", caption, path.name
+    |
+
+E501 Line too long (102 > 100)
+  --> bot/app/services/query_text.py:15:101
+   |
+14 | def is_image_payload(payload: PendingPayload) -> bool:
+15 |     return payload.source_type in {"photo", "image"} or (payload.mime_type or "").startswith("image/")
+   |                                                                                                     ^^
+   |
+
+E501 Line too long (110 > 100)
+  --> bot/app/utils/parsing.py:12:101
+   |
+12 | def parse_date(value: Any, *, formats: tuple[str, ...] = ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")) -> date | None:
+   |                                                                                                     ^^^^^^^^^^
+13 |     """Parse a date from common string formats."""
+14 |     if not value or not isinstance(value, str):
+   |
+
+E501 Line too long (102 > 100)
+  --> tests/test_coverage_gaps.py:85:101
+   |
+83 |     from helpers import mock_message
+84 |
+85 |     message = mock_message(audio=SimpleNamespace(file_id="a", mime_type="audio/mpeg", file_name=None))
+   |                                                                                                     ^^
+86 |     with patch("app.handlers.incoming.download_telegram_file", AsyncMock(return_value=b"1")):
+87 |         await on_audio(message)
+   |
+
+E501 Line too long (103 > 100)
+  --> tests/test_coverage_gaps.py:94:101
+   |
+93 |     message = mock_message(
+94 |         document=SimpleNamespace(file_id="d", file_name="x.bin", mime_type="application/octet-stream"),
+   |                                                                                                     ^^^
+95 |         caption=None,
+96 |     )
+   |
+
+E501 Line too long (124 > 100)
+  --> tests/test_handlers.py:56:101
+   |
+54 |     )
+55 |     assert forward_from_message(msg) == "Anon"
+56 |     msg = mock_message(forward_origin=SimpleNamespace(sender_user=None, chat=None, sender_chat=None, sender_user_name=None))
+   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^
+57 |     assert forward_from_message(msg) is None
+58 |     assert is_forward_message(mock_message(forward_date=1))
+   |
+
+E501 Line too long (101 > 100)
+   --> tests/test_handlers.py:145:101
+    |
+143 |     with patch("app.handlers.commands.answer_question", AsyncMock(return_value=("ans", []))):
+144 |         await commands.cmd_ask(message, command, session)
+145 |     with patch("app.handlers.commands.answer_question", AsyncMock(side_effect=RuntimeError("boom"))):
+    |                                                                                                     ^
+146 |         await commands.cmd_ask(message, command, session)
+    |
+
+E501 Line too long (102 > 100)
+   --> tests/test_handlers.py:180:101
+    |
+178 |             await callbacks.on_action(callback, MagicMock())
+179 |
+180 |         with patch("app.handlers.callbacks.ingest_payload", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^
+181 |             callback.data = "act:save:id"
+182 |             with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/test_handlers.py:185:9
+    |
+183 |                   await callbacks.on_action(callback, MagicMock())
+184 |
+185 | /         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+186 | |             with patch("app.handlers.callbacks.answer_question", AsyncMock(return_value=("a", []))):
+    | |____________________________________________________________________________________________________^
+187 |                   callback.data = "act:ask:id"
+188 |                   with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+help: Combine `with` statements
+
+E501 Line too long (110 > 100)
+   --> tests/test_handlers.py:196:101
+    |
+194 |                 await callbacks.on_action(callback, MagicMock())
+195 |
+196 |         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^^^^^^^^^
+197 |             callback.data = "act:ask:id"
+198 |             with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+SIM117 Use a single `with` statement with multiple contexts instead of nested `with` statements
+   --> tests/test_handlers.py:201:9
+    |
+199 |                   await callbacks.on_action(callback, MagicMock())
+200 |
+201 | /         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+202 | |             with patch("app.handlers.callbacks.answer_question", AsyncMock(side_effect=RuntimeError("x"))):
+    | |___________________________________________________________________________________________________________^
+203 |                   callback.data = "act:ask:id"
+204 |                   with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+help: Combine `with` statements
+
+E501 Line too long (107 > 100)
+   --> tests/test_handlers.py:202:101
+    |
+201 |         with patch("app.handlers.callbacks.materialize_query_text", AsyncMock(return_value="q")):
+202 |             with patch("app.handlers.callbacks.answer_question", AsyncMock(side_effect=RuntimeError("x"))):
+    |                                                                                                     ^^^^^^^
+203 |                 callback.data = "act:ask:id"
+204 |                 with patch("app.handlers.callbacks.pop_pending", return_value=payload):
+    |
+
+E501 Line too long (101 > 100)
+  --> tests/test_ingest_rag.py:47:101
+   |
+45 | @pytest.mark.asyncio
+46 | async def test_resolve_raw_text_branches(tmp_path):
+47 |     assert await ingest.resolve_raw_text(PendingPayload(source_type="text", text="hi"), None) == "hi"
+   |                                                                                                     ^
+48 |     assert "without text" in await ingest.resolve_raw_text(PendingPayload(source_type="text"), None)
+   |
+
+E501 Line too long (105 > 100)
+   --> tests/test_ingest_rag.py:177:101
+    |
+176 |     with patch("app.db.repository.search_similar", AsyncMock(side_effect=[[], [item]])):
+177 |         answer, items = await rag.answer_question(session, "when oil?", client=client, settings=settings)
+    |                                                                                                     ^^^^^
+178 |         assert "Cards:" in answer
+179 |         assert items == [item]
+    |
+
+E501 Line too long (105 > 100)
+   --> tests/test_ingest_rag.py:182:101
+    |
+181 |     with patch("app.db.repository.search_similar", AsyncMock(return_value=[item])):
+182 |         answer, items = await rag.answer_question(session, "oil again", client=client, settings=settings)
+    |                                                                                                     ^^^^^
+183 |         assert items == [item]
+    |
+
+E501 Line too long (103 > 100)
+   --> tests/test_ingest_rag.py:186:101
+    |
+185 |     with patch("app.db.repository.search_similar", AsyncMock(return_value=[])):
+186 |         answer, items = await rag.answer_question(session, "missing", client=client, settings=settings)
+    |                                                                                                     ^^^
+187 |         assert items == []
+188 |         assert "No matching" in answer
+    |
+
+F841 Local variable `item` is assigned to but never used
+  --> tests/test_repository.py:37:5
+   |
+35 |     session.execute = AsyncMock()
+36 |
+37 |     item = await create_item(session, title="t", source_type="text")
+   |     ^^^^
+38 |     assert session.add.called
+39 |     assert await get_item(session, 1) == "item"
+   |
+help: Remove assignment to unused variable `item`
+
+Found 22 errors.
+No fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+EXIT:1
