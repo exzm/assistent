@@ -175,7 +175,7 @@ async def test_rag_answer_paths(settings):
 
     with patch("app.db.repository.search_similar", AsyncMock(side_effect=[[], [item]])):
         answer, items = await rag.answer_question(session, "when oil?", client=client, settings=settings)
-        assert "Cards:" in answer
+        assert "Cards:" in answer or "Карточки:" in answer
         assert items == [item]
 
     with patch("app.db.repository.search_similar", AsyncMock(return_value=[item])):

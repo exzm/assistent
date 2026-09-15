@@ -17,6 +17,7 @@ from app.utils.parsing import (
     parse_amount,
     parse_date,
 )
+from app.utils.text import markdown_lite_to_html
 
 INTENT_PROMPT = """Extract search filters from the user question. Return ONLY JSON:
 {
@@ -67,7 +68,8 @@ def build_items_context(items: list[Item]) -> str:
 
 def compose_answer(answer: str, items: list[Item], *, card_limit: int = 3) -> str:
     cards = format_cards(items, limit=card_limit)
-    return f"{answer}\n\n—\nCards:\n{cards}"
+    body = markdown_lite_to_html(answer)
+    return f"{body}\n\n—\n<b>Карточки:</b>\n{cards}"
 
 
 async def parse_intent(

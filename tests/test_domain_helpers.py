@@ -106,8 +106,9 @@ def test_cards_and_rag_helpers():
     )()
     card = format_item_card(item)
     assert "#7" in card
-    assert "Amount:" in card
-    assert format_cards([]) == "No sources found."
+    assert "<b>#7</b>" in card
+    assert "Сумма:" in card
+    assert format_cards([]) == "Источники не найдены."
     assert "#7" in format_cards([item])
     intent = normalize_intent(
         {
@@ -119,4 +120,6 @@ def test_cards_and_rag_helpers():
         "q",
     )
     assert intent["rewritten_query"] == "oil"
-    assert compose_answer("ans", [item]).startswith("ans")
+    composed = compose_answer("ans **bold**", [item])
+    assert "<b>bold</b>" in composed
+    assert "Карточки:" in composed

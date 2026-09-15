@@ -4,6 +4,8 @@ import asyncio
 import logging
 
 from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from app.config import Settings, get_settings
 from app.middleware import create_dispatcher, setup_logging, wait_for_db
@@ -18,7 +20,10 @@ async def run_bot(settings: Settings | None = None) -> None:
     ensure_files_dir(cfg)
     await wait_for_db()
 
-    bot = Bot(token=cfg.telegram_bot_token)
+    bot = Bot(
+        token=cfg.telegram_bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = create_dispatcher(cfg)
     logger.info("Bot starting (long polling), allowed user_id=%s", cfg.telegram_user_id)
     await dp.start_polling(bot)

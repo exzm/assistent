@@ -10,7 +10,7 @@ from app.utils.parsing import (
     parse_amount,
     parse_date,
 )
-from app.utils.text import clip_telegram, join_nonempty
+from app.utils.text import clip_telegram, escape_html, join_nonempty, markdown_lite_to_html, prepare_telegram_html
 from app.utils.vectors import normalize_vector, vector_literal
 
 
@@ -54,6 +54,11 @@ def test_text_helpers():
     assert clip_telegram("hi") == "hi"
     assert clip_telegram("x" * 10, limit=5).endswith("…(truncated)")
     assert join_nonempty("a", None, "b") == "a\nb"
+    assert escape_html("a<b>") == "a&lt;b&gt;"
+    assert markdown_lite_to_html("say **hi** now") == "say <b>hi</b> now"
+    assert markdown_lite_to_html("use `code`") == "use <code>code</code>"
+    assert "<i>x</i>" in markdown_lite_to_html("*x*")
+    assert prepare_telegram_html("**ok**") == "<b>ok</b>"
 
 
 def test_vectors():

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import repository
 from app.services.cards import format_cards, format_item_card
 from app.services.rag import answer_question
-from app.utils.text import clip_telegram
+from app.utils.text import clip_telegram, escape_html
 
 router = Router(name="commands")
 
@@ -45,7 +45,7 @@ async def cmd_get(message: Message, command: CommandObject, session: AsyncSessio
     if not item:
         await message.answer(f"Record #{item_id} not found.")
         return
-    await message.answer(format_item_card(item))
+    await message.answer(clip_telegram(format_item_card(item)))
     if item.file_path:
         try:
             await message.answer_document(FSInputFile(item.file_path))
@@ -66,4 +66,4 @@ async def cmd_ask(message: Message, command: CommandObject, session: AsyncSessio
         answer, _ = await answer_question(session, question)
         await status.edit_text(clip_telegram(answer))
     except Exception as exc:  # noqa: BLE001
-        await status.edit_text(f"Search failed: {exc}")
+        await status.edit_text(f"Search failed: {escape_html(str(exc))}")

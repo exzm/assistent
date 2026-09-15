@@ -10,7 +10,7 @@ from app.services.ingest import ingest_payload
 from app.services.pending import pop_pending
 from app.services.query_text import materialize_query_text
 from app.services.rag import answer_question
-from app.utils.text import clip_telegram
+from app.utils.text import clip_telegram, escape_html
 
 router = Router(name="callbacks")
 
@@ -35,9 +35,9 @@ async def handle_save(callback: CallbackQuery, session: AsyncSession, payload: P
     await edit_or_send(callback, "Saving…")
     try:
         item = await ingest_payload(session, payload)
-        await edit_or_send(callback, clip_telegram("Saved.\n\n" + format_item_card(item)))
+        await edit_or_send(callback, clip_telegram(f"<b>Сохранено.</b>\n\n{format_item_card(item)}"))
     except Exception as exc:  # noqa: BLE001
-        await edit_or_send(callback, f"Failed to save: {exc}")
+        await edit_or_send(callback, f"Failed to save: {escape_html(str(exc))}")
 
 
 async def handle_ask(callback: CallbackQuery, session: AsyncSession, payload: PendingPayload) -> None:
@@ -45,7 +45,7 @@ async def handle_ask(callback: CallbackQuery, session: AsyncSession, payload: Pe
     try:
         question = await materialize_query_text(payload)
     except Exception as exc:  # noqa: BLE001
-        await edit_or_send(callback, f"Failed to prepare question: {exc}")
+        await edit_or_send(callback, f"Failed to prepare question: {escape_html(str(exc))}")
         return
 
     if not question:
@@ -60,7 +60,7 @@ async def handle_ask(callback: CallbackQuery, session: AsyncSession, payload: Pe
         answer, _ = await answer_question(session, question)
         await edit_or_send(callback, clip_telegram(answer))
     except Exception as exc:  # noqa: BLE001
-        await edit_or_send(callback, f"Failed to answer: {exc}")
+        await edit_or_send(callback, f"Failed to answer: {escape_html(str(exc))}")
 
 
 @router.callback_query(F.data.startswith("act:"))

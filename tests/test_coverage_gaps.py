@@ -68,7 +68,7 @@ def test_cards_minimal_and_parsing_edge_cases(tmp_path):
         summary=None,
     )
     card = format_item_card(item)
-    assert "Amount: 1" in card
+    assert "Сумма: 1" in card
 
     assert extract_json_object("{not json}") == {}
     path = tmp_path / "x.jpg"
