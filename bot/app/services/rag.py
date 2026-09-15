@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -130,6 +131,7 @@ async def answer_question(
     if not items:
         return EMPTY_ANSWER, []
 
+    today = date.today().isoformat()
     response = await openai_client.chat.completions.create(
         model=cfg.model_chat,
         messages=[
@@ -138,12 +140,18 @@ async def answer_question(
                 "content": (
                     "You are a personal assistant over the user's archive. "
                     "Answer only from the provided records. Mention #id and dates. "
-                    "If data is insufficient, say so. Be concise."
+                    "If data is insufficient, say so. Be concise. "
+                    f"Today's date is {today} (use ONLY this date for 'today', ages, and relative time). "
+                    "Never invent another 'as of' date."
                 ),
             },
             {
                 "role": "user",
-                "content": f"Question: {question}\n\nRecords:\n{build_items_context(items)}",
+                "content": (
+                    f"Today: {today}\n"
+                    f"Question: {question}\n\n"
+                    f"Records:\n{build_items_context(items)}"
+                ),
             },
         ],
         temperature=0.2,
