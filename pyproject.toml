@@ -44,7 +44,7 @@ include = ["app*"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-pythonpath = ["bot"]
+pythonpath = ["bot", "tests"]
 
 [tool.coverage.run]
 branch = true

@@ -12,7 +12,7 @@ from app.handlers.forwarding import (
     resolve_source_type,
 )
 from app.keyboards import pending_action_keyboard
-from tests.conftest import make_item, mock_message
+from helpers import make_item, mock_message
 
 
 def test_forwarding_helpers():

@@ -7,7 +7,7 @@ import pytest
 
 from app.services import embed, extract, stt, storage, vision
 from app.services.download import download_telegram_file
-from tests.conftest import make_chat_response, make_embed_response
+from helpers import make_chat_response, make_embed_response
 
 
 @pytest.mark.asyncio

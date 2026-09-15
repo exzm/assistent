@@ -8,7 +8,7 @@ import pytest
 
 from app.domain.payload import PendingPayload
 from app.services import ingest, rag
-from tests.conftest import make_chat_response, make_embed_response, make_item
+from helpers import make_chat_response, make_embed_response, make_item
 
 
 @pytest.mark.asyncio
