@@ -1,62 +1,106 @@
-# Helper Bot — личный Telegram memory-ассистент
+# Helper Bot
 
-Бот принимает фото, PDF, голос, заметки и пересланные сообщения, прогоняет через ProxyAPI (дешёвые LLM), сохраняет оригинал + структурированные поля + эмбеддинги в Postgres/pgvector и отвечает на вопросы с карточками найденных записей.
+Personal Telegram memory assistant. Send photos, PDFs, voice notes, text, and forwards.
+The bot extracts structured facts with inexpensive LLMs via [ProxyAPI](https://proxyapi.ru),
+stores originals on disk, indexes embeddings in Postgres/`pgvector`, and answers questions
+with source cards.
 
-## Возможности
+## Features
 
-- Whitelist по твоему Telegram user id
-- После каждого сообщения кнопки: **Сохранить** / **Это вопрос** / **Отмена**
-- Хранение оригиналов файлов на диске
-- RAG-ответы + карточки `#id`
-- Команды: `/start`, `/recent`, `/get <id>`, `/ask <вопрос>`
+- Single-user whitelist (`TELEGRAM_USER_ID`)
+- Inline actions: **Save** / **This is a question** / **Cancel**
+- Vision OCR, speech-to-text, JSON field extraction, embeddings, RAG answers
+- Original file storage + `/get <id>`
+- Docker Compose deployment (USA VPS friendly for Telegram access)
 
-## Быстрый старт (Docker на usnpi.com)
+## Architecture
 
-1. Скопируй конфиг:
+```text
+Telegram → aiogram bot → Save/Ask buttons
+                │
+                ├─ Save → STT/Vision/Extract/Embed → Postgres + files
+                └─ Ask  → Embed + hybrid retrieval → LLM answer + cards
+```
+
+## Quick start
+
+### 1. Configure
 
 ```bash
 cp .env.example .env
 ```
 
-2. Заполни в `.env`:
+Required values:
 
-- `TELEGRAM_BOT_TOKEN` — от [@BotFather](https://t.me/BotFather)
-- `TELEGRAM_USER_ID` — твой id ([@userinfobot](https://t.me/userinfobot))
-- `PROXYAPI_API_KEY` — ключ с [proxyapi.ru](https://proxyapi.ru)
+| Variable | Description |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
+| `TELEGRAM_USER_ID` | Your numeric Telegram id |
+| `PROXYAPI_API_KEY` | API key from [proxyapi.ru](https://proxyapi.ru) |
 
-3. Запуск:
+### 2. Run with Docker
 
 ```bash
 docker compose up -d --build
 docker compose logs -f bot
 ```
 
-4. Напиши боту `/start` из своего аккаунта.
+Then send `/start` to the bot from your whitelisted account.
 
-## Структура
+### 3. Local development
 
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+export PYTHONPATH=bot
+pytest --cov=app --cov-report=term-missing
 ```
-helper-bot/
-  docker-compose.yml   # bot + postgres/pgvector
-  db/init/             # SQL schema
-  data/files/          # оригиналы (volume)
-  bot/app/             # код бота
-```
 
-## Модели ProxyAPI (по умолчанию)
+## Commands
 
-| Назначение | Модель |
+| Command | Description |
 |---|---|
-| Vision / OCR | `inclusionai/ling-3.0-flash-vl` |
+| `/start` | Help |
+| `/recent` | Latest saved records |
+| `/get <id>` | Record card + original file |
+| `/ask <question>` | Ask immediately without buttons |
+
+## Default models (ProxyAPI)
+
+| Role | Model |
+|---|---|
+| Vision | `inclusionai/ling-3.0-flash-vl` |
 | STT | `openai/gpt-4o-mini-transcribe` |
-| Embeddings | `qwen/qwen3-embedding-8b` |
-| Extract JSON | `z-ai/glm-5.3-flash` |
-| Ответы | `deepseek/deepseek-v4.1-flash` |
+| Embeddings | `qwen/qwen3-embedding-8b` (`EMBED_DIMENSIONS=1024`) |
+| Extract | `z-ai/glm-5.3-flash` |
+| Chat / RAG | `deepseek/deepseek-v4.1-flash` |
 
-Меняются через переменные `MODEL_*` в `.env`.
+## Project layout
 
-## Заметки
+```text
+helper-bot/
+  bot/app/           # application package
+  tests/             # unit tests (100% coverage target)
+  db/init/           # Postgres schema
+  docker-compose.yml
+  pyproject.toml
+```
 
-- Режим long polling — отдельный домен/SSL не нужны.
-- `.env` не коммитится.
-- Если размер эмбеддинга модели другой — поправь `EMBED_DIMENSIONS` и `vector(N)` в `db/init/01_schema.sql` и `bot/app/db/models.py` (нужен чистый volume БД). По умолчанию 1024 (MRL у Qwen3 + лимит HNSW в pgvector).
+## Testing
+
+```bash
+pytest --cov=app --cov-report=term-missing
+```
+
+Coverage is enforced at **100%** via `pyproject.toml`.
+
+## Security notes
+
+- Never commit `.env`
+- Rotate keys if they leak into chat/logs
+- Whitelist blocks every non-owner Telegram account
+
+## License
+
+MIT — see [LICENSE](LICENSE).

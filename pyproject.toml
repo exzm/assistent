@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "helper-bot"
+version = "0.1.0"
+description = "Personal Telegram memory assistant with ProxyAPI LLM ingestion and pgvector RAG"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "helper-bot contributors" }]
+keywords = ["telegram", "aiogram", "rag", "pgvector", "proxyapi"]
+dependencies = [
+  "aiogram==3.22.0",
+  "openai==1.109.1",
+  "sqlalchemy[asyncio]==2.0.43",
+  "asyncpg==0.30.0",
+  "pgvector==0.4.1",
+  "pydantic-settings==2.10.1",
+  "pypdf==6.0.0",
+  "pdf2image==1.17.0",
+  "Pillow==11.3.0",
+  "python-dotenv==1.1.1",
+  "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.4.2",
+  "pytest-asyncio==1.2.0",
+  "pytest-cov==6.2.1",
+  "ruff==0.12.12",
+]
+
+[project.scripts]
+helper-bot = "app.main:main"
+
+[tool.setuptools.packages.find]
+where = ["bot"]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["bot"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+omit = []
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = false
+exclude_lines = [
+  "pragma: no cover",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["bot", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]

@@ -1,95 +1,51 @@
 from __future__ import annotations
 
-import json
-import re
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.db import repository
 from app.db.models import Item
 from app.services import embed
 from app.services.cards import format_cards
 from app.services.proxyapi import get_openai_client
+from app.utils.parsing import (
+    extract_json_object,
+    normalize_optional_category,
+    parse_amount,
+    parse_date,
+)
 
-INTENT_PROMPT = """Из пользовательского вопроса извлеки фильтры поиска. Верни ТОЛЬКО JSON:
+INTENT_PROMPT = """Extract search filters from the user question. Return ONLY JSON:
 {
-  "rewritten_query": "улучшенный поисковый запрос",
-  "event_date_from": "YYYY-MM-DD или null",
-  "event_date_to": "YYYY-MM-DD или null",
-  "min_amount": число или null,
-  "max_amount": число или null,
+  "rewritten_query": "improved search query",
+  "event_date_from": "YYYY-MM-DD or null",
+  "event_date_to": "YYYY-MM-DD or null",
+  "min_amount": number or null,
+  "max_amount": number or null,
   "category": "finance|auto_service|contract|health|note|other|null"
 }
 """
 
-
-def _parse_date(value: Any) -> date | None:
-    if not value or not isinstance(value, str):
-        return None
-    try:
-        return datetime.strptime(value.strip(), "%Y-%m-%d").date()
-    except ValueError:
-        return None
+EMPTY_ANSWER = (
+    "No matching records yet. Save a note or document and ask again."
+)
 
 
-def _parse_amount(value: Any) -> Decimal | None:
-    if value is None or value == "":
-        return None
-    try:
-        return Decimal(str(value))
-    except (InvalidOperation, ValueError):
-        return None
-
-
-def _extract_json(text: str) -> dict[str, Any]:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            return data
-    except json.JSONDecodeError:
-        pass
-    match = re.search(r"\{[\s\S]*\}", text)
-    if match:
-        data = json.loads(match.group(0))
-        if isinstance(data, dict):
-            return data
-    return {}
-
-
-async def parse_intent(question: str) -> dict[str, Any]:
-    settings = get_settings()
-    client = get_openai_client()
-    response = await client.chat.completions.create(
-        model=settings.model_chat,
-        messages=[
-            {"role": "system", "content": INTENT_PROMPT},
-            {"role": "user", "content": question},
-        ],
-        temperature=0,
-    )
-    data = _extract_json(response.choices[0].message.content or "{}")
-    category = data.get("category")
-    if category not in {"finance", "auto_service", "contract", "health", "note", "other"}:
-        category = None
+def normalize_intent(data: dict[str, Any], question: str) -> dict[str, Any]:
     return {
         "rewritten_query": (data.get("rewritten_query") or question).strip(),
-        "event_date_from": _parse_date(data.get("event_date_from")),
-        "event_date_to": _parse_date(data.get("event_date_to")),
-        "min_amount": _parse_amount(data.get("min_amount")),
-        "max_amount": _parse_amount(data.get("max_amount")),
-        "category": category,
+        "event_date_from": parse_date(data.get("event_date_from"), formats=("%Y-%m-%d",)),
+        "event_date_to": parse_date(data.get("event_date_to"), formats=("%Y-%m-%d",)),
+        "min_amount": parse_amount(data.get("min_amount")),
+        "max_amount": parse_amount(data.get("max_amount")),
+        "category": normalize_optional_category(data.get("category")),
     }
 
 
-def _items_context(items: list[Item]) -> str:
+def build_items_context(items: list[Item]) -> str:
     blocks: list[str] = []
     for item in items:
         blocks.append(
@@ -109,16 +65,51 @@ def _items_context(items: list[Item]) -> str:
     return "\n\n---\n\n".join(blocks)
 
 
-async def answer_question(session: AsyncSession, question: str) -> tuple[str, list[Item]]:
-    settings = get_settings()
-    intent = await parse_intent(question)
+def compose_answer(answer: str, items: list[Item], *, card_limit: int = 3) -> str:
+    cards = format_cards(items, limit=card_limit)
+    return f"{answer}\n\n—\nCards:\n{cards}"
+
+
+async def parse_intent(
+    question: str,
+    *,
+    client: AsyncOpenAI | None = None,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    cfg = settings or get_settings()
+    openai_client = client or get_openai_client(cfg)
+    response = await openai_client.chat.completions.create(
+        model=cfg.model_chat,
+        messages=[
+            {"role": "system", "content": INTENT_PROMPT},
+            {"role": "user", "content": question},
+        ],
+        temperature=0,
+    )
+    return normalize_intent(
+        extract_json_object(response.choices[0].message.content or "{}"),
+        question,
+    )
+
+
+async def answer_question(
+    session: AsyncSession,
+    question: str,
+    *,
+    client: AsyncOpenAI | None = None,
+    settings: Settings | None = None,
+) -> tuple[str, list[Item]]:
+    cfg = settings or get_settings()
+    openai_client = client or get_openai_client(cfg)
+    intent = await parse_intent(question, client=openai_client, settings=cfg)
     query = intent["rewritten_query"]
-    vector = await embed.embed_text(query)
+    vector = await embed.embed_text(query, client=openai_client, settings=cfg)
+
     items = list(
         await repository.search_similar(
             session,
             embedding=vector,
-            top_k=settings.rag_top_k,
+            top_k=cfg.rag_top_k,
             event_date_from=intent["event_date_from"],
             event_date_to=intent["event_date_to"],
             min_amount=intent["min_amount"],
@@ -126,30 +117,34 @@ async def answer_question(session: AsyncSession, question: str) -> tuple[str, li
             category=intent["category"],
         )
     )
-
     if not items:
-        # fallback without filters
-        items = list(await repository.search_similar(session, embedding=vector, top_k=settings.rag_top_k))
-
+        items = list(
+            await repository.search_similar(
+                session,
+                embedding=vector,
+                top_k=cfg.rag_top_k,
+            )
+        )
     if not items:
-        return "Пока нет подходящих записей в базе. Сохрани заметку или документ и спроси снова.", []
+        return EMPTY_ANSWER, []
 
-    client = get_openai_client()
-    system = (
-        "Ты личный ассистент по архиву заметок пользователя. "
-        "Отвечай только на основе найденных записей. Указывай #id и даты. "
-        "Если данных недостаточно — так и скажи. Отвечай кратко на русском."
-    )
-    user = f"Вопрос: {question}\n\nНайденные записи:\n{_items_context(items)}"
-    response = await client.chat.completions.create(
-        model=settings.model_chat,
+    response = await openai_client.chat.completions.create(
+        model=cfg.model_chat,
         messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
+            {
+                "role": "system",
+                "content": (
+                    "You are a personal assistant over the user's archive. "
+                    "Answer only from the provided records. Mention #id and dates. "
+                    "If data is insufficient, say so. Be concise."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Question: {question}\n\nRecords:\n{build_items_context(items)}",
+            },
         ],
         temperature=0.2,
     )
     answer = (response.choices[0].message.content or "").strip()
-    cards = format_cards(items, limit=3)
-    full = f"{answer}\n\n—\nКарточки:\n{cards}"
-    return full, items
+    return compose_answer(answer, items), items

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Item
+from app.utils.vectors import vector_literal
 
 
 async def create_item(session: AsyncSession, **kwargs: Any) -> Item:
@@ -18,7 +19,7 @@ async def create_item(session: AsyncSession, **kwargs: Any) -> Item:
     return item
 
 
-async def get_item(session: AsyncSession, item_id: int) -> Optional[Item]:
+async def get_item(session: AsyncSession, item_id: int) -> Item | None:
     return await session.get(Item, item_id)
 
 
@@ -27,19 +28,16 @@ async def list_recent(session: AsyncSession, limit: int = 10) -> Sequence[Item]:
     return result.scalars().all()
 
 
-async def search_similar(
-    session: AsyncSession,
-    embedding: list[float],
-    top_k: int = 5,
+def build_similarity_query(
+    *,
     event_date_from: date | None = None,
     event_date_to: date | None = None,
     min_amount: Decimal | None = None,
     max_amount: Decimal | None = None,
     category: str | None = None,
-) -> Sequence[Item]:
-    vector_literal = "[" + ",".join(str(x) for x in embedding) + "]"
+) -> tuple[str, dict[str, Any]]:
     clauses = ["embedding IS NOT NULL"]
-    params: dict[str, Any] = {"emb": vector_literal, "top_k": top_k}
+    params: dict[str, Any] = {}
 
     if event_date_from is not None:
         clauses.append("event_date >= :date_from")
@@ -58,20 +56,43 @@ async def search_similar(
         params["category"] = category
 
     where = " AND ".join(clauses)
-    sql = text(
-        f"""
+    sql = f"""
         SELECT id
         FROM items
         WHERE {where}
         ORDER BY embedding <=> CAST(:emb AS vector)
         LIMIT :top_k
-        """
+    """
+    return sql, params
+
+
+async def search_similar(
+    session: AsyncSession,
+    embedding: list[float],
+    top_k: int = 5,
+    event_date_from: date | None = None,
+    event_date_to: date | None = None,
+    min_amount: Decimal | None = None,
+    max_amount: Decimal | None = None,
+    category: str | None = None,
+) -> Sequence[Item]:
+    sql, params = build_similarity_query(
+        event_date_from=event_date_from,
+        event_date_to=event_date_to,
+        min_amount=min_amount,
+        max_amount=max_amount,
+        category=category,
     )
-    result = await session.execute(sql, params)
+    params = {
+        **params,
+        "emb": vector_literal(embedding),
+        "top_k": top_k,
+    }
+    result = await session.execute(text(sql), params)
     ids = [row[0] for row in result.fetchall()]
     if not ids:
         return []
 
     items_result = await session.execute(select(Item).where(Item.id.in_(ids)))
     items = {item.id: item for item in items_result.scalars().all()}
-    return [items[i] for i in ids if i in items]
+    return [items[item_id] for item_id in ids if item_id in items]
