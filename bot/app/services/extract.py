@@ -1,112 +1,114 @@
 from __future__ import annotations
 
-import json
-import re
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any
 
-from app.config import get_settings
+from openai import AsyncOpenAI
+
+from app.config import Settings, get_settings
 from app.services.proxyapi import get_openai_client
+from app.utils.parsing import (
+    extract_json_object,
+    normalize_category,
+    parse_amount,
+    parse_date,
+)
+from app.utils.text import join_nonempty
 
 EXTRACT_SCHEMA_HINT = """
-Верни ТОЛЬКО валидный JSON без markdown:
+Return ONLY valid JSON without markdown:
 {
-  "title": "краткий заголовок",
-  "summary": "1-2 предложения",
-  "event_date": "YYYY-MM-DD или null",
-  "amount": число или null,
-  "currency": "RUB/USD/... или null",
+  "title": "short title",
+  "summary": "1-2 sentences",
+  "event_date": "YYYY-MM-DD or null",
+  "amount": number or null,
+  "currency": "RUB/USD/... or null",
   "category": "finance|auto_service|contract|health|note|other",
-  "tags": ["тег1", "тег2"],
-  "entities": {"ключ": "значение"}
+  "tags": ["tag1", "tag2"],
+  "entities": {"key": "value"}
 }
-Категории: finance — счета/оплаты; auto_service — ТО/масло/авто; contract — договоры;
-health — медицина; note — заметки; other — прочее.
+Categories: finance — bills/payments; auto_service — car maintenance; contract — contracts;
+health — medical; note — notes; other — everything else.
 """
 
 
-def _parse_date(value: Any) -> date | None:
-    if not value or not isinstance(value, str):
-        return None
-    value = value.strip()
-    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
-    return None
-
-
-def _parse_amount(value: Any) -> Decimal | None:
-    if value is None or value == "":
-        return None
-    try:
-        return Decimal(str(value).replace(",", ".").replace(" ", ""))
-    except (InvalidOperation, ValueError):
-        return None
-
-
-def _extract_json(text: str) -> dict[str, Any]:
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            return data
-    except json.JSONDecodeError:
-        pass
-    match = re.search(r"\{[\s\S]*\}", text)
-    if match:
-        data = json.loads(match.group(0))
-        if isinstance(data, dict):
-            return data
-    return {}
-
-
-async def extract_fields(raw_text: str, source_hint: str = "") -> dict[str, Any]:
-    settings = get_settings()
-    client = get_openai_client()
-    prompt = (
-        f"Источник: {source_hint or 'unknown'}\n"
-        f"Текст:\n{raw_text[:12000]}\n\n"
-        f"{EXTRACT_SCHEMA_HINT}"
-    )
-    response = await client.chat.completions.create(
-        model=settings.model_extract,
-        messages=[
-            {"role": "system", "content": "Ты извлекаешь структурированные факты из личных заметок и документов."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0,
-    )
-    content = response.choices[0].message.content or "{}"
-    data = _extract_json(content)
-
+def normalize_extracted_fields(data: dict[str, Any], raw_text: str) -> dict[str, Any]:
+    """Normalize LLM JSON into a stable ingest payload."""
     tags = data.get("tags") or []
     if not isinstance(tags, list):
         tags = []
-    tags = [str(t).strip() for t in tags if str(t).strip()][:12]
+    tags = [str(tag).strip() for tag in tags if str(tag).strip()][:12]
 
     entities = data.get("entities") or {}
     if not isinstance(entities, dict):
         entities = {}
 
-    title = (data.get("title") or "").strip() or (raw_text[:80].strip() if raw_text else "Без названия")
+    fallback_title = raw_text[:80].strip() if raw_text else "Untitled"
+    title = (data.get("title") or "").strip() or fallback_title
     summary = (data.get("summary") or "").strip() or title
-    category = (data.get("category") or "other").strip()
-    if category not in {"finance", "auto_service", "contract", "health", "note", "other"}:
-        category = "other"
+    currency = data.get("currency")
 
     return {
         "title": title[:200],
         "summary": summary[:1000],
-        "event_date": _parse_date(data.get("event_date")),
-        "amount": _parse_amount(data.get("amount")),
-        "currency": (str(data.get("currency")).upper() if data.get("currency") else None),
-        "category": category,
+        "event_date": parse_date(data.get("event_date")),
+        "amount": parse_amount(data.get("amount")),
+        "currency": str(currency).upper() if currency else None,
+        "category": normalize_category(data.get("category")),
         "tags": tags,
         "entities": entities,
     }
+
+
+async def extract_fields(
+    raw_text: str,
+    source_hint: str = "",
+    *,
+    client: AsyncOpenAI | None = None,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    cfg = settings or get_settings()
+    openai_client = client or get_openai_client(cfg)
+    prompt = (
+        f"Source: {source_hint or 'unknown'}\n"
+        f"Text:\n{raw_text[:12000]}\n\n"
+        f"{EXTRACT_SCHEMA_HINT}"
+    )
+    response = await openai_client.chat.completions.create(
+        model=cfg.model_extract,
+        messages=[
+            {
+                "role": "system",
+                "content": "You extract structured facts from personal notes and documents.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0,
+    )
+    content = response.choices[0].message.content or "{}"
+    return normalize_extracted_fields(extract_json_object(content), raw_text)
+
+
+def build_fallback_raw_text(source_type: str, caption: str = "", filename: str = "") -> str:
+    return join_nonempty(caption, f"File: {filename}" if filename else None) or (
+        f"{source_type} message without text"
+    )
+
+
+def resolve_document_raw_text(
+    *,
+    path: Path,
+    mime_type: str | None,
+    caption: str,
+    existing_text: str,
+    pdf_text: str,
+    vision_text: str | None,
+) -> str:
+    if path.suffix.lower() == ".pdf":
+        body = pdf_text if len(pdf_text) >= 40 else (vision_text or pdf_text)
+        return join_nonempty(caption, body) or build_fallback_raw_text("document", caption, path.name)
+    if mime_type and mime_type.startswith("image/"):
+        return join_nonempty(caption, vision_text) or build_fallback_raw_text("document", caption, path.name)
+    return join_nonempty(caption, f"File: {path.name}", existing_text) or build_fallback_raw_text(
+        "document", caption, path.name
+    )
